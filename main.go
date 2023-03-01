@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -23,7 +23,7 @@ func main() {
 	// 解析命令行参数
 	flag.Parse()
 
-	log.Println(*apiKey)
+	logrus.Info(*apiKey)
 
 	r := gin.Default()
 	r.POST("/send", func(context *gin.Context) {
@@ -32,39 +32,34 @@ func main() {
 
 		err := context.ShouldBindJSON(&query)
 		if err != nil {
-			log.Panic(err)
+			logrus.Error(err)
 		}
 
-		log.Println("send: " + query.Msg)
+		logrus.Info("send: " + query.Msg)
 		back := sendChatGPT(query.Msg, *apiKey)
-		log.Println("back: " + back)
+		logrus.Info("back: " + back)
 		context.JSON(http.StatusOK, gin.H{"msg": back})
 	})
 
 	err := r.Run()
 	if err != nil {
-		log.Panic(err)
+		logrus.Error(err)
 	}
 }
 
 func configLog() {
 	file, err := os.Create("send.log")
+	logrus.SetOutput(file)
 	if err != nil {
-		log.Panic("Cannot create log file", err)
+		logrus.Error("Cannot create log file", err)
 	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Panic(err)
-		}
-	}(file)
-	log.SetOutput(file)
+	gin.DefaultWriter = io.MultiWriter(file)
 }
 
 func sendChatGPT(msg string, apiKey string) string {
 	if len(msg) > 97 {
 		result := "消息内容长度不能大于197个字节"
-		log.Println(result)
+		logrus.Info(result)
 		return result
 	}
 
@@ -87,7 +82,7 @@ func sendChatGPT(msg string, apiKey string) string {
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
 		if err != nil {
-			log.Panic(err)
+			logrus.Error(err)
 		}
 	}(res.Body)
 	body, _ := ioutil.ReadAll(res.Body)
@@ -95,7 +90,7 @@ func sendChatGPT(msg string, apiKey string) string {
 	var data map[string]interface{}
 	err := json.Unmarshal(body, &data)
 	if err != nil {
-		log.Panic(err)
+		logrus.Error(err)
 	}
 
 	if data["error"] != nil {
