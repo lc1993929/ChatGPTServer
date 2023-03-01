@@ -1,13 +1,14 @@
 #!/bin/bash
 
 # Clone the repository from GitHub
-git clone https://github.com/user/repo.git
+git clone https://github.com/lc1993929/ChatGPTServer
 
 # Change directory to the cloned repository
-cd repo
+# shellcheck disable=SC2164
+cd ChatGPTServer
 
 # Build the Go application
-go build -o app
+go build -o ChatServer
 
 # Execute the compiled binary
-./app
+./ChatServer -apiKey yourAPIKey

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"github.com/gin-gonic/gin"
 	"io"
 	"io/ioutil"
@@ -15,6 +16,13 @@ type Query struct {
 }
 
 func main() {
+
+	apiKey := flag.String("apiKey", "", "openApi apiKey")
+	// 解析命令行参数
+	flag.Parse()
+
+	log.Println(*apiKey)
+
 	r := gin.Default()
 	r.POST("/send", func(context *gin.Context) {
 
@@ -24,10 +32,10 @@ func main() {
 		if err != nil {
 			log.Panic(err)
 		}
-		log.Println(query)
 
-		back := sendChatGPT(query.Msg)
-		log.Println(back)
+		log.Println("send: " + query.Msg)
+		back := sendChatGPT(query.Msg, *apiKey)
+		log.Println("back: " + back)
 		context.JSON(http.StatusOK, gin.H{"msg": back})
 	})
 
@@ -37,9 +45,11 @@ func main() {
 	}
 }
 
-func sendChatGPT(msg string) string {
+func sendChatGPT(msg string, apiKey string) string {
 	if len(msg) > 97 {
-		log.Panic("消息内容长度不能大于197个字节")
+		result := "消息内容长度不能大于197个字节"
+		log.Println(result)
+		return result
 	}
 
 	url := "https://api.openai.com/v1/completions"
@@ -54,7 +64,7 @@ func sendChatGPT(msg string) string {
 	req, _ := http.NewRequest("POST", url, payload)
 
 	req.Header.Add("content-type", "application/json")
-	req.Header.Add("Authorization", "Bearer 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") //替换成你的API KEY
+	req.Header.Add("Authorization", "Bearer "+apiKey) //替换成你的API KEY
 
 	res, _ := http.DefaultClient.Do(req)
 
@@ -70,6 +80,10 @@ func sendChatGPT(msg string) string {
 	err := json.Unmarshal(body, &data)
 	if err != nil {
 		log.Panic(err)
+	}
+
+	if data["error"] != nil {
+		return data["error"].(map[string]interface{})["message"].(string)
 	}
 
 	output := data["choices"].([]interface{})[0].(map[string]interface{})["text"].(string)

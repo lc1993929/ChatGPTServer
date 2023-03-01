@@ -1,4 +1,4 @@
-module chatGPT
+module ChatGPTServer
 
 go 1.18
 
