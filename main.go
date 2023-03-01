@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -16,6 +17,7 @@ type Query struct {
 }
 
 func main() {
+	configLog()
 
 	apiKey := flag.String("apiKey", "", "openApi apiKey")
 	// 解析命令行参数
@@ -43,6 +45,20 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+}
+
+func configLog() {
+	file, err := os.Create("send.log")
+	if err != nil {
+		log.Panic("Cannot create log file", err)
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+			log.Panic(err)
+		}
+	}(file)
+	log.SetOutput(file)
 }
 
 func sendChatGPT(msg string, apiKey string) string {
