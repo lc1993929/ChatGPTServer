@@ -25,8 +25,10 @@ func main() {
 
 	logrus.Info(*apiKey)
 
-	r := gin.Default()
-	r.POST("/send", func(context *gin.Context) {
+	router := gin.Default()
+	// 允许跨域访问
+	router.Use(corsMiddleware())
+	router.POST("/send", func(context *gin.Context) {
 
 		query := Query{}
 
@@ -41,7 +43,7 @@ func main() {
 		context.JSON(http.StatusOK, gin.H{"msg": back})
 	})
 
-	err := r.Run()
+	err := router.Run()
 	if err != nil {
 		logrus.Error(err)
 	}
@@ -99,4 +101,18 @@ func sendChatGPT(msg string, apiKey string) string {
 
 	output := data["choices"].([]interface{})[0].(map[string]interface{})["text"].(string)
 	return output
+}
+
+// 跨域中间件
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(200)
+		} else {
+			c.Next()
+		}
+	}
 }
