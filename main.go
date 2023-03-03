@@ -1,12 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -25,7 +25,8 @@ func main() {
 
 	logrus.Info(*apiKey)
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(LogMiddleWare(), gin.Recovery())
 	// 允许跨域访问
 	router.Use(corsMiddleware())
 	router.POST("/send", func(context *gin.Context) {
@@ -59,7 +60,7 @@ func configLog() {
 }
 
 func sendChatGPT(msg string, apiKey string) string {
-	if len(msg) > 97 {
+	if len(msg) > 197 {
 		result := "消息内容长度不能大于197个字节"
 		logrus.Info(result)
 		return result
@@ -87,7 +88,7 @@ func sendChatGPT(msg string, apiKey string) string {
 			logrus.Error(err)
 		}
 	}(res.Body)
-	body, _ := ioutil.ReadAll(res.Body)
+	body, _ := io.ReadAll(res.Body)
 
 	var data map[string]interface{}
 	err := json.Unmarshal(body, &data)
@@ -114,5 +115,36 @@ func corsMiddleware() gin.HandlerFunc {
 		} else {
 			c.Next()
 		}
+	}
+}
+
+func LogMiddleWare() gin.HandlerFunc {
+
+	return func(c *gin.Context) {
+
+		method := c.Request.Method
+		reqUrl := c.Request.RequestURI
+		statusCode := c.Writer.Status()
+		clientIP := c.ClientIP()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				logrus.Error(err)
+			}
+		}(c.Request.Body)
+
+		data, _ := io.ReadAll(c.Request.Body)
+		body := string(data[:])
+		logrus.WithFields(logrus.Fields{
+			"method":      method,
+			"uri":         reqUrl,
+			"status_code": statusCode,
+			"client_ip":   clientIP,
+			"body":        body,
+		}).Info()
+
+		c.Request.Body = io.NopCloser(bytes.NewBuffer(data))
+
+		c.Next()
 	}
 }
